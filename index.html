@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nhóm 2 - Giới thiệu thành viên</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-DpmD1STR.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DAN_wijk.css">
+  </head>
+  <body>
+
+    <!-- ACT 1: Fake Canva Slide -->
+    <div id="fake-slide" class="screen">
+      <div class="slide-content">
+        <div class="slide-badge">MÔN HỌC: NHẬP MÔN CNTT</div>
+        <h1 class="slide-title">Giới Thiệu Thành Viên</h1>
+        <h2 class="slide-subtitle">NHÓM 2</h2>
+        <p class="slide-desc">Bấm nút bên dưới để xem video giới thiệu nhóm</p>
+        <button id="play-btn" class="slide-play-btn">
+          <span class="play-icon">▶</span>
+          XEM VIDEO GIỚI THIỆU
+        </button>
+        <p class="slide-footer">Trường Đại học Công nghệ Thông tin — UIT</p>
+      </div>
+    </div>
+
+    <!-- ACT 2 & 3: Glitch + Panic Screens -->
+    <div id="glitch-overlay" class="screen hidden"></div>
+    <div id="bsod-screen" class="screen hidden">
+      <div class="bsod-content">
+        <h1>:(</h1>
+        <p>Your PC ran into a problem and needs to restart.</p>
+        <p>We're just collecting some error info, and then we'll restart for you.</p>
+        <p class="bsod-percent">0% complete</p>
+        <br>
+        <p class="bsod-small">Stop code: NHOM_2_INTRUSION_DETECTED</p>
+      </div>
+    </div>
+    <div id="red-screen" class="screen hidden">
+      <div class="red-content">
+        <h1>⚠ CRITICAL WARNING ⚠</h1>
+        <p>UNAUTHORIZED ACCESS DETECTED</p>
+      </div>
+    </div>
+    <div id="black-screen" class="screen hidden"></div>
+
+    <!-- ACT 4: CLI Ransomware -->
+    <div id="cli-screen" class="screen hidden">
+      <div class="cli-container">
+        <div id="cli-content"></div>
+        <span class="cli-cursor">_</span>
+      </div>
+    </div>
+
+    <!-- FINALE: Vietnam Flag Splash -->
+    <div id="flag-finale" class="screen hidden">
+      <div class="flag-container">
+        <div class="flag-star">★</div>
+        <h1 class="flag-title">NHÓM 2</h1>
+        <p class="flag-subtitle">NHẬP MÔN CÔNG NGHỆ THÔNG TIN</p>
+        <p class="flag-quote">"Tụi tui ở đây — và tụi tui sẽ cố hết sức."</p>
+        <p class="flag-school">Trường Đại học Công nghệ Thông tin — UIT</p>
+      </div>
+    </div>
+
+    <!-- ACT 5: Dashboard -->
+    <canvas id="matrix-canvas"></canvas>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+
+    <main id="main-dash" class="screen hidden">
+      <header class="dash-header">
+        <div class="system-status-panel">
+          <div class="panel-header">TRẠNG THÁI MẠNG</div>
+          <div class="panel-body">
+            <span class="pulse-dot"></span>
+            <span class="status-text">ĐANG XÂM NHẬP HỆ THỐNG TEAMS</span>
+          </div>
+        </div>
+        <div class="logo-area">
+          <h1 class="glitch small" data-text="NHÓM 2">NHÓM 2</h1>
+        </div>
+        <div class="system-stats">
+          <div class="stat-item">
+            <span class="label">ĐỢT QUÉT</span>
+            <span class="value" id="batch-id">01/05</span>
+          </div>
+          <div class="stat-item">
+            <span class="label">THÀNH VIÊN</span>
+            <span class="value">15</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="infiltration-stage">
+        <aside class="side-terminal left">
+          <div class="terminal-label">NHẬT KÝ HỆ THỐNG</div>
+          <div id="log-content" class="log-container"></div>
+        </aside>
+
+        <div class="node-cluster" id="member-container"></div>
+
+        <aside class="side-terminal right">
+          <div class="terminal-label">LUỒNG DỮ LIỆU</div>
+          <div id="hex-content" class="log-container hex-stream"></div>
+        </aside>
+      </section>
+
+      <footer class="dash-footer">
+        <div class="batch-dots" id="batch-dots"></div>
+        <div class="progress-bar-container">
+          <div class="progress-fill" id="cycle-progress"></div>
+        </div>
+        <div class="footer-content">
+          <span class="timestamp" id="live-clock">2026.04.03 | 20:00:00</span>
+          <span class="copyright">NHÓM_2 // UIT // NHẬP MÔN CNTT</span>
+        </div>
+      </footer>
+    </main>
+
+    <!-- CLOSING SCREEN -->
+    <div id="closing-screen" class="screen hidden">
+      <div class="closing-container">
+        <div class="closing-star">★</div>
+        <h1 class="closing-title">CẢM ƠN CẢ LỚP ĐÃ LẮNG NGHE</h1>
+        <div class="closing-divider"></div>
+        <p class="closing-group">NHÓM 2 — NHẬP MÔN CNTT</p>
+        <p class="closing-members">15 thành viên • Đại học Công nghệ Thông tin — UIT</p>
+        <p class="closing-quote">"Hành trình vạn dặm bắt đầu từ một dòng code."</p>
+        <div class="closing-names" id="closing-names"></div>
+      </div>
+    </div>
+
+  </body>
+</html>
