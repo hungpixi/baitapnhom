@@ -1,0 +1,14 @@
+# Exclude large zip files
+*.zip
+Video gioi thieu ban than-20260618T120628Z-3-001.zip
+
+# Exclude python scripts and scratch files
+scratch/
+convert_videos.py
+
+# Standard exclusions
+node_modules
+.git
+.vercel
+.DS_Store
+*.log
