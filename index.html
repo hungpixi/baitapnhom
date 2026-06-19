@@ -88,16 +88,50 @@ var soundController = new class {
   constructor() {
     this.audioCtx = null;
     this.masterGain = null;
+    this._connectedElements = new WeakSet(); // Theo dõi các phần tử đã kết nối
   }
   init() {
     if (!this.audioCtx) {
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       this.masterGain = this.audioCtx.createGain();
-      this.masterGain.gain.value = 0.3;
+      this.masterGain.gain.value = 0.4; // Tăng âm lượng tổng hệ thống
       this.masterGain.connect(this.audioCtx.destination);
     }
     if (this.audioCtx.state === "suspended") {
       this.audioCtx.resume();
+    }
+  }
+  connectVideo(videoElement) {
+    this.init();
+    if (!this.audioCtx) return;
+    if (this._connectedElements.has(videoElement)) {
+      return;
+    }
+    try {
+      // Định tuyến âm thanh của thẻ video vào AudioContext
+      let source = this.audioCtx.createMediaElementSource(videoElement);
+      
+      // Tạo bộ nén động học (Compressor) để thu hẹp khoảng cách to nhỏ
+      let compressor = this.audioCtx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-24, this.audioCtx.currentTime); // Ngưỡng nén
+      compressor.knee.setValueAtTime(30, this.audioCtx.currentTime);       // Độ chuyển mượt
+      compressor.ratio.setValueAtTime(12, this.audioCtx.currentTime);      // Tỉ lệ nén
+      compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);  // Phản hồi cực nhanh
+      compressor.release.setValueAtTime(0.25, this.audioCtx.currentTime);  // Nhả nén mượt mà
+      
+      // Tạo bộ tăng âm lượng (Makeup Gain) để đẩy các video nói nhỏ lên
+      let gainNode = this.audioCtx.createGain();
+      gainNode.gain.setValueAtTime(2.2, this.audioCtx.currentTime); // Tăng 2.2 lần âm lượng sau khi nén
+      
+      // Kết nối luồng: Video -> Compressor -> Gain Node -> Master Gain (Loa)
+      source.connect(compressor);
+      compressor.connect(gainNode);
+      gainNode.connect(this.masterGain);
+      
+      this._connectedElements.add(videoElement);
+      console.log("[Audio normalizer] Connected video to compressor.");
+    } catch(e) {
+      console.warn("[Audio normalizer] Connection failed (likely already connected):", e);
     }
   }
   playGlitchBurst() {
@@ -672,6 +706,9 @@ function setupPresentationVideoAndControls(index) {
   let skipBtn = document.getElementById("pres-btn-skip-to-closing");
 
   function safePlay(targetVideo, successCallback, failCallback) {
+    if (soundController.audioCtx && soundController.audioCtx.state === "suspended") {
+      soundController.audioCtx.resume();
+    }
     let playPromise = targetVideo.play();
     if (playPromise !== undefined && typeof playPromise.then === 'function') {
       playPromise.then(() => {
@@ -683,6 +720,9 @@ function setupPresentationVideoAndControls(index) {
       if (successCallback) successCallback();
     }
   }
+
+  // Kết nối video thuyết trình với bộ nén âm thanh để cân bằng volume
+  soundController.connectVideo(video);
 
   // Synced state on video load
   video.muted = false;
@@ -874,6 +914,9 @@ function setupVideoAndControls(index) {
   let videoOverlay = document.getElementById("video-overlay");
  
   function safePlay(targetVideo, successCallback, failCallback) {
+    if (soundController.audioCtx && soundController.audioCtx.state === "suspended") {
+      soundController.audioCtx.resume();
+    }
     let playPromise = targetVideo.play();
     if (playPromise !== undefined && typeof playPromise.then === 'function') {
       playPromise.then(() => {
@@ -885,6 +928,9 @@ function setupVideoAndControls(index) {
       if (successCallback) successCallback();
     }
   }
+
+  // Kết nối video thành viên với bộ nén âm thanh để cân bằng volume
+  soundController.connectVideo(video);
 
   // Synced state on video load
   video.muted = false;
@@ -1020,6 +1066,7 @@ function showClosingScreen() {
 
 // Skip intro sequence and jump to main dashboard
 function skipIntroSequence() {
+  soundController.init(); // Kích hoạt AudioContext ngay khi người dùng tương tác skip
   isIntroSkipped = true;
   isPresentationMode = false;
   soundController.stopAmbient();
