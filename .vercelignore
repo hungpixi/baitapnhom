@@ -12,3 +12,7 @@ node_modules
 .vercel
 .DS_Store
 *.log
+
+# Exclude large presentation videos that exceed 50MB limits
+assets/videos/thuyettrinh1.mp4
+assets/videos/thuyettrinh2.mp4
