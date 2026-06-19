@@ -76,6 +76,13 @@ var members = [
   {id:13,name:`Vũ Anh Tuấn`,year:1993,current:`Thợ code`,goal:`Tăng cơ hội nghề nghiệp và đi XKLĐ`,dream:`XKLĐ`,bio:`Thợ code thực chiến - Đặt mục tiêu làm việc tại nước ngoài.`,video:`assets/videos/13_anhtuan.mp4`,role:`NODE_13 // OFFSHORE_CODER`}
 ];
 
+var presentationVideos = [
+  {id: 1, name: "PHẦN 1: THUYẾT TRÌNH CHI TIẾT", video: "assets/videos/thuyettrinh1.mp4", role: "PRES_CAM_01 // DETAILED_REPORT"},
+  {id: 2, name: "PHẦN 2: DEMO VÀ TỔNG KẾT", video: "assets/videos/thuyettrinh2.mp4", role: "PRES_CAM_02 // SYSTEM_DEMONSTRATION"}
+];
+var currentPresIndex = 0;
+var isPresentationMode = false;
+
 // Audio synthesizer controller
 var soundController = new class {
   constructor() {
@@ -537,9 +544,21 @@ function startFallbackTimer(index) {
 function goToMember(index) {
   clearFallbackTimer();
   
-  // If we reach the end of the roster list, trigger closing screen
+  // Giải phóng video cũ của thành viên trước khi render mới
+  let oldVideo = document.getElementById("member-video");
+  if (oldVideo) {
+    try {
+      oldVideo.pause();
+      oldVideo.removeAttribute('src');
+      oldVideo.load();
+    } catch(e) {
+      console.warn("Loi giai phong video cu:", e);
+    }
+  }
+  
+  // If we reach the end of the roster list, transition to presentation videos
   if (index >= members.length) {
-    showClosingScreen();
+    goToPresentation(0);
     return;
   }
   if (index < 0) return;
@@ -551,7 +570,7 @@ function goToMember(index) {
   memberContainer.classList.add("glitching");
   setTimeout(() => {
     memberContainer.classList.remove("glitching");
-  }, 400);
+  }, 250);
 
   currentMemberIndex = index;
   batchIdSpan.textContent = `${String(currentMemberIndex + 1).padStart(2, "0")}/${String(members.length).padStart(2, "0")}`;
@@ -559,6 +578,190 @@ function goToMember(index) {
   updateQuickJumpBar(currentMemberIndex);
   updateTargetNodesList(currentMemberIndex);
   renderMemberProfile(currentMemberIndex);
+}
+
+// Go to specific presentation video
+function goToPresentation(index) {
+  clearFallbackTimer();
+  
+  // Giải phóng video thành viên cũ
+  let oldVideo = document.getElementById("member-video");
+  if (oldVideo) {
+    try {
+      oldVideo.pause();
+      oldVideo.removeAttribute('src');
+      oldVideo.load();
+    } catch(e) {}
+  }
+  
+  // Giải phóng video thuyết trình cũ
+  let oldPresVideo = document.getElementById("presentation-video");
+  if (oldPresVideo) {
+    try {
+      oldPresVideo.pause();
+      oldPresVideo.removeAttribute('src');
+      oldPresVideo.load();
+    } catch(e) {}
+  }
+  
+  if (index < 0) {
+    // Go back to the last member
+    hideScreen(document.getElementById("presentation-screen"));
+    showScreen(mainDash);
+    isPresentationMode = false;
+    goToMember(members.length - 1);
+    return;
+  }
+  
+  if (index >= presentationVideos.length) {
+    // Go to closing screen
+    hideScreen(document.getElementById("presentation-screen"));
+    showClosingScreen();
+    return;
+  }
+  
+  isPresentationMode = true;
+  currentPresIndex = index;
+  
+  // Hide other screens
+  hideScreen(mainDash);
+  hideScreen(closingScreen);
+  showScreen(document.getElementById("presentation-screen"));
+  
+  // Sound and glitch burst on transition
+  soundController.playGlitchBurst();
+  
+  // Render presentation profile and video
+  renderPresentationProfile(currentPresIndex);
+}
+
+// Render presentation profile (video column + custom metadata HUD)
+function renderPresentationProfile(index) {
+  let pres = presentationVideos[index];
+  let titleEl = document.getElementById("pres-video-title");
+  let idEl = document.getElementById("pres-video-id");
+  let feedCamEl = document.getElementById("pres-feed-cam");
+  let videoEl = document.getElementById("presentation-video");
+  let videoOverlay = document.getElementById("pres-video-overlay");
+  
+  idEl.textContent = `PART ${String(index + 1).padStart(2, "0")}/${String(presentationVideos.length).padStart(2, "0")}`;
+  feedCamEl.textContent = pres.role;
+  
+  // Update video element source
+  videoEl.src = pres.video;
+  videoEl.load();
+  
+  // Reset overlay
+  videoOverlay.style.display = "flex";
+  
+  // Decrypt title effect
+  decryptText(titleEl, pres.name, 600);
+  
+  setupPresentationVideoAndControls(index);
+}
+
+// Presentation video events and controls mapping
+function setupPresentationVideoAndControls(index) {
+  let video = document.getElementById("presentation-video");
+  let playPauseBtn = document.getElementById("pres-btn-play-pause");
+  let prevBtn = document.getElementById("pres-btn-prev");
+  let nextBtn = document.getElementById("pres-btn-next");
+  let speedSelect = document.getElementById("pres-select-speed");
+  let autoAdvanceChk = document.getElementById("pres-chk-auto-advance");
+  let videoOverlay = document.getElementById("pres-video-overlay");
+  let skipBtn = document.getElementById("pres-btn-skip-to-closing");
+
+  function safePlay(targetVideo, successCallback, failCallback) {
+    let playPromise = targetVideo.play();
+    if (playPromise !== undefined && typeof playPromise.then === 'function') {
+      playPromise.then(() => {
+        if (successCallback) successCallback();
+      }).catch(err => {
+        if (failCallback) failCallback(err);
+      });
+    } else {
+      if (successCallback) successCallback();
+    }
+  }
+
+  // Synced state on video load
+  video.muted = false;
+
+  // Keep speed matching the global speed preference
+  speedSelect.value = globalSpeed;
+  video.playbackRate = parseFloat(globalSpeed);
+
+  // Attempt autoplay
+  safePlay(video, () => {
+    videoOverlay.style.display = "none";
+    playPauseBtn.textContent = "⏸ PAUSE";
+  }, (err) => {
+    console.log("Presentation autoplay blocked:", err);
+    videoOverlay.style.display = "flex";
+    playPauseBtn.textContent = "▶ PLAY";
+  });
+
+  // Video status syncs
+  video.onplaying = () => {
+    videoOverlay.style.display = "none";
+    playPauseBtn.textContent = "⏸ PAUSE";
+  };
+
+  video.onpause = () => {
+    playPauseBtn.textContent = "▶ PLAY";
+  };
+
+  video.onended = () => {
+    if (autoAdvanceChk.checked) {
+      goToPresentation(index + 1);
+    }
+  };
+
+  // Synchronize controls
+  playPauseBtn.onclick = () => {
+    if (video.paused) {
+      safePlay(video, null, null);
+    } else {
+      video.pause();
+    }
+  };
+
+  videoOverlay.onclick = () => {
+    safePlay(video, null, null);
+  };
+
+  prevBtn.onclick = () => goToPresentation(index - 1);
+  nextBtn.onclick = () => goToPresentation(index + 1);
+
+  speedSelect.onchange = () => {
+    globalSpeed = speedSelect.value;
+    video.playbackRate = parseFloat(globalSpeed);
+  };
+
+  // Video progress & HUD timecode display
+  video.ontimeupdate = () => {
+    if (video.duration) {
+      updatePresTimecode(video.currentTime, video.playbackRate);
+    }
+  };
+
+  skipBtn.onclick = () => {
+    video.pause();
+    goToPresentation(presentationVideos.length);
+  };
+}
+
+function updatePresTimecode(currentTime, playbackRate) {
+  let timecodeEl = document.getElementById("pres-hud-timecode");
+  if (!timecodeEl) return;
+  
+  let totalMs = currentTime * 1000;
+  let hours = Math.floor(totalMs / 3600000);
+  let minutes = Math.floor((totalMs % 3600000) / 60000);
+  let seconds = Math.floor((totalMs % 60000) / 1000);
+  let frames = Math.floor((totalMs % 1000) / 33);
+  
+  timecodeEl.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}:${String(frames).padStart(2, "0")}`;
 }
 
 // Render member profile (2-column layout)
@@ -622,12 +825,7 @@ function renderMemberProfile(index) {
             <div class="hud-crosshair">+</div>
             <div class="hud-corners"></div>
           </div>
-          
-          <button class="unmute-hud-btn" id="btn-unmute-hud">
-            <span class="unmute-icon">🔈</span> UNMUTE AUDIO // BẬT ÂM THANH
-          </button>
-          
-          <video id="member-video" playsinline preload="auto">
+          <video id="member-video" playsinline preload="metadata">
             <source src="${member.video}" type="video/mp4">
             Trình duyệt không hỗ trợ xem video.
           </video>
@@ -674,7 +872,6 @@ function setupVideoAndControls(index) {
   let speedSelect = document.getElementById("select-speed");
   let autoAdvanceChk = document.getElementById("chk-auto-advance");
   let videoOverlay = document.getElementById("video-overlay");
-  let unmuteBtn = document.getElementById("btn-unmute-hud");
  
   function safePlay(targetVideo, successCallback, failCallback) {
     let playPromise = targetVideo.play();
@@ -690,37 +887,24 @@ function setupVideoAndControls(index) {
   }
 
   // Synced state on video load
-  video.muted = globalMuted;
+  video.muted = false;
 
   // Keep speed matching the global speed preference
   speedSelect.value = globalSpeed;
   video.playbackRate = parseFloat(globalSpeed);
 
-  // Attempt autoplay (with sound, if blocked fallback to muted autoplay + show unmute button)
+  // Attempt autoplay
   safePlay(video, () => {
     videoOverlay.style.display = "none";
     playPauseBtn.textContent = "⏸ PAUSE";
-    if (unmuteBtn) unmuteBtn.classList.add("hidden");
   }, (err) => {
-    console.log("Autoplay unmuted blocked, trying muted autoplay:", err);
-    video.muted = true;
-    safePlay(video, () => {
-      // Muted autoplay works
-      videoOverlay.style.display = "none";
-      playPauseBtn.textContent = "⏸ PAUSE";
-      if (unmuteBtn) unmuteBtn.classList.remove("hidden");
-    }, () => {
-      // Both blocked, require clicking overlay to play
-      videoOverlay.style.display = "flex";
-      playPauseBtn.textContent = "▶ PLAY";
-      if (unmuteBtn) unmuteBtn.classList.add("hidden");
-      startFallbackTimer(index);
-    });
+    console.log("Autoplay blocked:", err);
+    videoOverlay.style.display = "flex";
+    playPauseBtn.textContent = "▶ PLAY";
   });
 
   // Video status syncs
-  video.onplay = () => {
-    clearFallbackTimer();
+  video.onplaying = () => {
     videoOverlay.style.display = "none";
     playPauseBtn.textContent = "⏸ PAUSE";
   };
@@ -736,36 +920,20 @@ function setupVideoAndControls(index) {
   };
 
   video.onerror = () => {
-    console.warn("Video failed to play, running fallback timer.");
-    startFallbackTimer(index);
+    console.warn("Video failed to play.");
   };
-
-  // Unmute HUD button logic
-  if (unmuteBtn) {
-    unmuteBtn.onclick = (e) => {
-      e.stopPropagation();
-      video.muted = false;
-      globalMuted = false;
-      unmuteBtn.classList.add("hidden");
-    };
-  }
 
   // Synchronize controls
   playPauseBtn.onclick = () => {
     if (video.paused) {
-      video.muted = globalMuted;
-      safePlay(video, null, () => {
-        startFallbackTimer(index);
-      });
+      safePlay(video, null, null);
     } else {
       video.pause();
     }
   };
 
   videoOverlay.onclick = () => {
-    safePlay(video, null, () => {
-      startFallbackTimer(index);
-    });
+    safePlay(video, null, null);
   };
 
   prevBtn.onclick = () => goToMember(index - 1);
@@ -790,6 +958,24 @@ function setupVideoAndControls(index) {
 
 // Show the final outro screen with a countdown to restart the loop
 function showClosingScreen() {
+  // Giải phóng mọi video đang load/phát dở
+  let oldVideo = document.getElementById("member-video");
+  if (oldVideo) {
+    try {
+      oldVideo.pause();
+      oldVideo.removeAttribute('src');
+      oldVideo.load();
+    } catch(e) {}
+  }
+  let oldPresVideo = document.getElementById("presentation-video");
+  if (oldPresVideo) {
+    try {
+      oldPresVideo.pause();
+      oldPresVideo.removeAttribute('src');
+      oldPresVideo.load();
+    } catch(e) {}
+  }
+
   if (sysLogInterval) {
     clearInterval(sysLogInterval);
     sysLogInterval = null;
@@ -804,6 +990,7 @@ function showClosingScreen() {
   });
 
   hideScreen(mainDash);
+  hideScreen(document.getElementById("presentation-screen"));
   showScreen(closingScreen);
 
   // Auto-restart loop countdown (8 seconds)
@@ -834,9 +1021,28 @@ function showClosingScreen() {
 // Skip intro sequence and jump to main dashboard
 function skipIntroSequence() {
   isIntroSkipped = true;
+  isPresentationMode = false;
   soundController.stopAmbient();
   
-  [fakeSlide, glitchOverlay, bsodScreen, redScreen, blackScreen, cliScreen, document.getElementById("flag-finale")].forEach(el => {
+  // Giải phóng mọi video đang load/phát dở
+  let oldVideo = document.getElementById("member-video");
+  if (oldVideo) {
+    try {
+      oldVideo.pause();
+      oldVideo.removeAttribute('src');
+      oldVideo.load();
+    } catch(e) {}
+  }
+  let oldPresVideo = document.getElementById("presentation-video");
+  if (oldPresVideo) {
+    try {
+      oldPresVideo.pause();
+      oldPresVideo.removeAttribute('src');
+      oldPresVideo.load();
+    } catch(e) {}
+  }
+  
+  [fakeSlide, glitchOverlay, bsodScreen, redScreen, blackScreen, cliScreen, document.getElementById("flag-finale"), document.getElementById("presentation-screen")].forEach(el => {
     if (el) hideScreen(el);
   });
   
@@ -940,6 +1146,124 @@ setInterval(() => {
   }
 }, 1000);
 </script>
+    <style>
+      /* Override black flash when loading videos */
+      .member-video-col, .video-wrapper, .presentation-video-wrapper, #member-video, #presentation-video {
+        background-color: #060c12 !important;
+      }
+      #presentation-screen {
+        background: #02060f;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+      .presentation-container {
+        width: 100%;
+        height: 100%;
+        max-width: 1200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .presentation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 0.8rem;
+      }
+      .pres-badge {
+        font-family: var(--font-mono);
+        color: var(--cyber-purple);
+        border-left: 2px solid var(--cyber-purple);
+        padding-left: 8px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .pres-pulse-dot {
+        width: 6px;
+        height: 6px;
+        background-color: var(--cyber-purple);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--cyber-purple);
+        animation: pulse_status 1s infinite alternate;
+      }
+      .pres-title-area {
+        flex: 1;
+        text-align: center;
+      }
+      .pres-video-title {
+        font-family: var(--font-mono);
+        color: var(--cyber-cyan);
+        text-shadow: var(--glow-cyan);
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      .pres-stats {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .presentation-video-wrapper {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        background: #000;
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+      .presentation-video-wrapper video {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        z-index: 1;
+      }
+      .pres-controls-bar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--glass-border);
+      }
+      .skip-pres-btn {
+        border-color: var(--cyber-purple);
+        color: var(--cyber-purple);
+        box-shadow: 0 0 5px rgba(179, 102, 255, 0.2);
+        margin-left: auto;
+      }
+      .skip-pres-btn:hover {
+        background: var(--cyber-purple);
+        color: #000;
+        box-shadow: 0 0 15px rgba(179, 102, 255, 0.6);
+      }
+      @media (max-width: 768px) {
+        .pres-controls-bar {
+          justify-content: space-between;
+        }
+        .skip-pres-btn {
+          margin-left: 0;
+          width: 100%;
+          text-align: center;
+        }
+      }
+    </style>
     <link rel="stylesheet" href="assets/index-DAN_wijk.css">
   </head>
   <body>
@@ -1057,6 +1381,71 @@ setInterval(() => {
         </div>
       </footer>
     </main>
+
+    <!-- ACT 6: Presentation Screen (Full Screen) -->
+    <div id="presentation-screen" class="screen hidden">
+      <div class="presentation-container">
+        <div class="presentation-header">
+          <div class="pres-badge">
+            <span class="pres-pulse-dot"></span>
+            LIVE INTRUSION // PRESENTATION FEED
+          </div>
+          <div class="pres-title-area">
+            <h2 id="pres-video-title" class="pres-video-title">PHẦN 1: BÁO CÁO CHI TIẾT & PHÂN TÍCH</h2>
+          </div>
+          <div class="pres-stats">
+            <span id="pres-video-id">PART 01/02</span>
+          </div>
+        </div>
+        
+        <div class="presentation-video-wrapper">
+          <!-- Digital CCTV HUD overlay -->
+          <div class="cctv-hud-overlay">
+            <div class="hud-top-left"><span class="hud-rec-dot">●</span> LIVE</div>
+            <div class="hud-top-right" id="pres-hud-timecode">00:00:00:00</div>
+            <div class="hud-bottom-left" id="pres-feed-cam">PRES_CAM_01 // SYSTEM_OVERVIEW</div>
+            <div class="hud-bottom-right" id="pres-feed-quality">1080P // H.264 // 30fps</div>
+            <div class="hud-crosshair">+</div>
+            <div class="hud-corners"></div>
+          </div>
+          <video id="presentation-video" playsinline preload="metadata">
+            <!-- Source will be inserted dynamically -->
+            Trình duyệt không hỗ trợ xem video.
+          </video>
+          
+          <div class="video-overlay" id="pres-video-overlay">
+            <div class="play-overlay-circle">
+              <span class="play-overlay-icon">▶</span>
+            </div>
+            <span class="play-overlay-text">GIẢI MÃ BÀI THUYẾT TRÌNH</span>
+          </div>
+        </div>
+        
+        <div class="pres-controls-bar">
+          <button class="ctrl-btn" id="pres-btn-prev" title="Phần trước">◀ PREV</button>
+          <button class="ctrl-btn" id="pres-btn-play-pause" title="Phát/Tạm dừng">⏸ PAUSE</button>
+          <button class="ctrl-btn" id="pres-btn-next" title="Phần tiếp theo">NEXT ▶</button>
+          
+          <div class="control-group">
+            <span class="ctrl-label">SPEED:</span>
+            <select id="pres-select-speed" class="ctrl-select">
+              <option value="1">1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+            </select>
+          </div>
+
+          <div class="control-group check-group">
+            <label class="ctrl-label-checkbox">
+              <input type="checkbox" id="pres-chk-auto-advance" checked>
+              AUTO NEXT
+            </label>
+          </div>
+          
+          <button class="ctrl-btn skip-pres-btn" id="pres-btn-skip-to-closing">SKIP TO END ⏩</button>
+        </div>
+      </div>
+    </div>
 
     <!-- CLOSING SCREEN -->
     <div id="closing-screen" class="screen hidden">
